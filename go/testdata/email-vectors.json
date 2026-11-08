@@ -1,0 +1,26 @@
+{
+  "description": "Which user.get emails Relume accepts (protocol section 5). Relume validates with Zod 4's z.email(); @relume_io/partner-node mirrors its pattern. Both test suites assert every entry, so the two can't drift.",
+  "valid": [
+    "ada@example.com",
+    "o'neil+relume@mail.example.co",
+    "first.last@sub.example.com",
+    "a_b-c@example.io",
+    "1234@example.com",
+    "ADA@EXAMPLE.COM"
+  ],
+  "invalid": [
+    "a@b.c",
+    "ada.@example.com",
+    ".ada@example.com",
+    "a..b@example.com",
+    "ada@localhost",
+    "ada@example",
+    "ada lovelace@example.com",
+    "ada@-example.com",
+    "ada@exa_mple.com",
+    "@example.com",
+    "ada@",
+    "ada@example.c0m",
+    "zoë@example.com"
+  ]
+}

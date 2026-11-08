@@ -1,0 +1,318 @@
+{
+  "$comment": "Generated from backend/src/services/partners/signing.ts by `npm run partner-protocol:test-vectors`. Do not edit by hand.",
+  "spec": "docs/partner-protocol/v1.md",
+  "scheme": "v1",
+  "header": "Relume-Signature",
+  "toleranceSeconds": 300,
+  "vectors": [
+    {
+      "name": "valid",
+      "description": "Signed with the current key, verified 30 seconds later.",
+      "sign": {
+        "secrets": ["sk_test_vectors_current_key_00000000000000"],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": true
+        }
+      }
+    },
+    {
+      "name": "valid_at_tolerance_edge",
+      "description": "Verified exactly 300 seconds after signing: the tolerance is inclusive.",
+      "sign": {
+        "secrets": ["sk_test_vectors_current_key_00000000000000"],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059500,
+        "expected": {
+          "valid": true
+        }
+      }
+    },
+    {
+      "name": "valid_unicode_body",
+      "description": "The HMAC covers the UTF-8 bytes of the body exactly as received.",
+      "sign": {
+        "secrets": ["sk_test_vectors_current_key_00000000000000"],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"user.get\",\"environment\":\"test\",\"userId\":\"zoë-卡-☕\"}",
+        "signedPayload": "1793059200.{\"type\":\"user.get\",\"environment\":\"test\",\"userId\":\"zoë-卡-☕\"}",
+        "header": "t=1793059200,v1=47f26524f71ed967826f0f901f52b965e20e8616c6177ae642b78d8b223f1e09"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=47f26524f71ed967826f0f901f52b965e20e8616c6177ae642b78d8b223f1e09",
+        "rawBody": "{\"type\":\"user.get\",\"environment\":\"test\",\"userId\":\"zoë-卡-☕\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": true
+        }
+      }
+    },
+    {
+      "name": "tampered_body",
+      "description": "The body was changed after signing (partnerCredits 80000 became 8).",
+      "sign": {
+        "secrets": ["sk_test_vectors_current_key_00000000000000"],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":8,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      }
+    },
+    {
+      "name": "reserialized_body",
+      "description": "The same JSON re-serialised with whitespace. Verify the raw bytes, never a re-encoded object.",
+      "sign": {
+        "secrets": ["sk_test_vectors_current_key_00000000000000"],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\n  \"type\": \"credits.charge\",\n  \"environment\": \"test\",\n  \"userId\": \"42\",\n  \"chargeId\": \"ch_test_vectors_0001\",\n  \"partnerCredits\": 80000,\n  \"relumeCredits\": 8,\n  \"action\": \"page.unlock\",\n  \"siteId\": \"site_test_vectors_0001\",\n  \"pageId\": \"page_test_vectors_0001\",\n  \"description\": \"Unlock \\\"About\\\" page\"\n}",
+        "now": 1793059230,
+        "expected": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      }
+    },
+    {
+      "name": "wrong_key",
+      "description": "Signed with a key the verifier does not hold.",
+      "sign": {
+        "secrets": ["sk_test_vectors_unrelated_key_000000000000"],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=b7ca1e0e1fa6af61817e0cb3a77abef75a0feef303e2a0fe507e89057e559aa8"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=b7ca1e0e1fa6af61817e0cb3a77abef75a0feef303e2a0fe507e89057e559aa8",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      }
+    },
+    {
+      "name": "stale_timestamp",
+      "description": "Verified 301 seconds after signing.",
+      "sign": {
+        "secrets": ["sk_test_vectors_current_key_00000000000000"],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059501,
+        "expected": {
+          "valid": false,
+          "reason": "timestamp_out_of_tolerance"
+        }
+      }
+    },
+    {
+      "name": "future_timestamp",
+      "description": "Timestamp 301 seconds ahead of the verifier's clock.",
+      "sign": {
+        "secrets": ["sk_test_vectors_current_key_00000000000000"],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793058899,
+        "expected": {
+          "valid": false,
+          "reason": "timestamp_out_of_tolerance"
+        }
+      }
+    },
+    {
+      "name": "dual_signature_current_key",
+      "description": "During a key rotation the header carries a v1= per key, newest first. A partner holding the new key verifies.",
+      "sign": {
+        "secrets": [
+          "sk_test_vectors_current_key_00000000000000",
+          "sk_test_vectors_previous_key_0000000000000"
+        ],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c,v1=7e1aef3fb3762e81849a991c762c303febaebb0dbe115eb1ba65a492672d5010"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c,v1=7e1aef3fb3762e81849a991c762c303febaebb0dbe115eb1ba65a492672d5010",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": true
+        }
+      }
+    },
+    {
+      "name": "dual_signature_previous_key",
+      "description": "The same rotation header, verified by a partner still holding the old key.",
+      "sign": {
+        "secrets": [
+          "sk_test_vectors_current_key_00000000000000",
+          "sk_test_vectors_previous_key_0000000000000"
+        ],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c,v1=7e1aef3fb3762e81849a991c762c303febaebb0dbe115eb1ba65a492672d5010"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_previous_key_0000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c,v1=7e1aef3fb3762e81849a991c762c303febaebb0dbe115eb1ba65a492672d5010",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": true
+        }
+      }
+    },
+    {
+      "name": "dual_signature_unrelated_key",
+      "description": "A rotation header verified with neither of its keys.",
+      "sign": {
+        "secrets": [
+          "sk_test_vectors_current_key_00000000000000",
+          "sk_test_vectors_previous_key_0000000000000"
+        ],
+        "timestamp": 1793059200,
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "signedPayload": "1793059200.{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c,v1=7e1aef3fb3762e81849a991c762c303febaebb0dbe115eb1ba65a492672d5010"
+      },
+      "verify": {
+        "secret": "sk_test_vectors_unrelated_key_000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c,v1=7e1aef3fb3762e81849a991c762c303febaebb0dbe115eb1ba65a492672d5010",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      }
+    },
+    {
+      "name": "unknown_scheme_ignored",
+      "description": "Schemes other than v1 are ignored, so a later v2= can be added without breaking v1 verifiers.",
+      "sign": null,
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v2=0000000000000000000000000000000000000000000000000000000000000000,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": true
+        }
+      }
+    },
+    {
+      "name": "malformed_missing_timestamp",
+      "description": "No t= entry.",
+      "sign": null,
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": false,
+          "reason": "malformed_header"
+        }
+      }
+    },
+    {
+      "name": "malformed_missing_signature",
+      "description": "No v1= entry.",
+      "sign": null,
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": false,
+          "reason": "malformed_header"
+        }
+      }
+    },
+    {
+      "name": "malformed_zero_padded_timestamp",
+      "description": "t= must be canonical decimal with no leading zeros, because the HMAC covers it as written.",
+      "sign": null,
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=01793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": false,
+          "reason": "malformed_header"
+        }
+      }
+    },
+    {
+      "name": "malformed_too_many_signatures",
+      "description": "More v1= values than the two keys that can be live at once, even though one of them is valid.",
+      "sign": null,
+      "verify": {
+        "secret": "sk_test_vectors_current_key_00000000000000",
+        "header": "t=1793059200,v1=14027ae846c09289cb0d72ab7d8ff95bd5bdb404a9d1a8160f2f09560f13584c,v1=0000000000000000000000000000000000000000000000000000000000000000,v1=1111111111111111111111111111111111111111111111111111111111111111",
+        "rawBody": "{\"type\":\"credits.charge\",\"environment\":\"test\",\"userId\":\"42\",\"chargeId\":\"ch_test_vectors_0001\",\"partnerCredits\":80000,\"relumeCredits\":8,\"action\":\"page.unlock\",\"siteId\":\"site_test_vectors_0001\",\"pageId\":\"page_test_vectors_0001\",\"description\":\"Unlock \\\"About\\\" page\"}",
+        "now": 1793059230,
+        "expected": {
+          "valid": false,
+          "reason": "malformed_header"
+        }
+      }
+    }
+  ]
+}
