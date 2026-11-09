@@ -244,8 +244,32 @@ RELUME_SECRET_KEY=sk_test_… npx @relume_io/partner-node check \
 ## Developing
 
 `testdata/` holds the protocol's signing and email test vectors, generated
-from Relume's backend. Copy them over again when the protocol changes.
+from Relume's backend. They are copies of `docs/partner-protocol/test-vectors.json`
+and `email-vectors.json` in nova: copy them over again when the protocol changes.
 
 ```sh
 go vet ./... && go test -race ./...
 ```
+
+CI runs these on every push, plus `gofmt` and a 32-bit `go vet`.
+
+### Releasing
+
+1. If the protocol changed, copy the test vectors over (above).
+2. Set `Version` in `relume.go` to the new version and merge to `main`.
+3. Tag the merge commit and push the tag. The module is in `go/`, so the tag
+   needs the prefix:
+
+   ```sh
+   git fetch origin && git tag go/v1.2.3 origin/main && git push origin go/v1.2.3
+   ```
+
+4. Have the Go proxy fetch it, so pkg.go.dev lists it:
+
+   ```sh
+   GOPROXY=https://proxy.golang.org go list -m github.com/relumetech/partner-sdk/go@v1.2.3
+   ```
+
+CI fails a tag that doesn't match `Version`, but by then the tag is already
+public. A published version can't be changed or deleted: withdraw a bad one
+with a `retract` directive in the next release.
