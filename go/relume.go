@@ -63,9 +63,8 @@ type Options struct {
 	// SecretKey is sk_test_… or sk_live_…. Server only: never send it to a
 	// browser. Surrounding whitespace is trimmed.
 	SecretKey string
-	// APIBaseURL defaults to production; Relume gives you another URL for
-	// staging. Must be https, since every request carries the secret key;
-	// http is allowed only for localhost.
+	// APIBaseURL defaults to production. Must be https, since every request
+	// carries the secret key; http is allowed only for localhost.
 	APIBaseURL string
 	// APITimeout is per partner API request attempt. Default 15 seconds.
 	APITimeout time.Duration

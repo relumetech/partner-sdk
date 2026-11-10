@@ -67,8 +67,18 @@ if err != nil {
 http.Handle("/relume/", client.Handler())
 ```
 
-Then, in Relume's partner settings, set your endpoint URL to
+## Endpoint URL
+
+On the Partners page in Relume, set each environment's endpoint URL to
 `https://<your backend>/relume/calls`.
+
+- Relume's servers call it, so it must be reachable from the internet. On
+  `localhost`, use a tunnel such as `cloudflared tunnel --url http://localhost:3000`
+  or `ngrok http 3000`.
+- Give test and live their own URLs, each served with that environment's
+  secret key. Live URLs must be `https`.
+- The builder can't open for a new user until the endpoint answers: Relume
+  calls `user.get` before their first session.
 
 ## What it serves
 
@@ -117,6 +127,7 @@ builder is embedded.
 | No `Relume-Embed: 1` header (session route)   | `400 embed_header_missing`, and `OnHandlerError` says why    |
 | `Sec-Fetch-Site: cross-site` (session route)  | `403 cross_site_request`                                     |
 | Nobody signed in (session route)              | `401 not_signed_in`                                          |
+| Relume unreachable (session route)            | `502 session_failed`, or `504` on a timeout                  |
 | `POST /sessions` refused (session route)      | Relume's status and `{ error }`, e.g. `403 user_deactivated` |
 
 Every response is JSON with `Cache-Control: no-store`.
@@ -194,6 +205,13 @@ if errors.As(err, &apiErr) && apiErr.Code == relume.CodeUserNotFound {
 | `ListPrices(ctx)`                 | `GET /prices`                            |
 | `GetPrices(ctx)`                  | `GET /prices`, with `CreditUnit`         |
 
+- `GetPrices` returns your prices and `CreditUnit`: what the builder calls
+  your credits, and the icon it shows beside amounts. `PartnerCredits` is nil
+  until Relume sets it. `ListPrices` returns the prices alone.
+- A user who has never opened the builder has no Relume account, so
+  `ListSites` and `CreateSite` answer `CodeUserNotFound`. Before creating a
+  site for them, call `CreateSession`: it creates the account.
+
 Lists are fetched a page at a time as you range over them:
 
 ```go
@@ -213,14 +231,15 @@ moves past a page once all its items were handed out.
 Requests carry the secret key, so `APIBaseURL` must be `https` (http only for
 localhost). A 429 is retried after its `Retry-After`; a 5xx or a failed
 connection with backoff, except on `CreateSite`, which isn't idempotent.
-Redirects are never followed.
+The session route makes one attempt, because a browser is waiting. Redirects
+are never followed.
 
 ## Options
 
 ```go
 relume.New(relume.Options{
 	SecretKey:      "sk_test_…",       // required; sk_test_… or sk_live_…
-	APIBaseURL:     "https://…",       // default production; Relume gives you staging's
+	APIBaseURL:     "https://…",       // default production; http only for localhost
 	APITimeout:     15 * time.Second,  // per attempt
 	MaxRetries:     2,                 // retries after the first attempt; default 2
 	DisableRetries: false,             // true for a single attempt per request
@@ -240,6 +259,14 @@ Node SDK; it works against any language:
 RELUME_SECRET_KEY=sk_test_… npx @relume_io/partner-node check \
   --url https://partner.example/relume/calls --user <a test user id>
 ```
+
+- `--user` must be a user your wallet knows, holding at least 2 credits. The
+  check charges them 2 and reverses everything it charged.
+- Pass the key in `RELUME_SECRET_KEY`, not `--secret-key`: a key on the
+  command line lands in shell history and CI logs.
+- It exits `0` only when every check passes, so you can run it in CI. A live
+  key is refused unless you pass `--live`, because the check moves real
+  credits.
 
 ## Developing
 
