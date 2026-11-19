@@ -99,7 +99,8 @@ type ChargeResult struct {
 	// The balance after the charge, if you know it. Saves Relume a
 	// credits.get call.
 	Balance *int
-	// Declined only: why, passed to the embed's onTopUp untouched so your
+	// Declined only (ignored otherwise): why, passed to the embed's onTopUp
+	// untouched so your
 	// page opens the right flow, e.g. "subscription_required". 1 to 64
 	// characters of letters, digits and _.:- ; empty for none.
 	Reason string
@@ -125,10 +126,10 @@ type declineFields struct {
 // onTopUp lacked it.
 func declineBody(result ChargeResult) (declineFields, error) {
 	fields := declineFields{balanceBody: balanceBody{Balance: result.Balance}}
+	// A charge that went through has nothing to say why: its wallet is
+	// already debited, so failing the call over a stray field would reverse
+	// it. Reason and Metadata are ignored then.
 	if result.Status != Declined {
-		if result.Reason != "" || result.Metadata != nil {
-			return fields, &InvalidCallbackResultError{"OnChargeCredits: Reason and Metadata are for a Declined result only."}
-		}
 		return fields, nil
 	}
 	if result.Reason != "" {
