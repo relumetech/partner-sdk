@@ -319,8 +319,6 @@ func TestCreditsCharge(t *testing.T) {
 			"spaced reason":  {Status: Declined, Reason: "needs payment"},
 			"large metadata": {Status: Declined, Metadata: map[string]any{"blob": strings.Repeat("x", 1100)}},
 			"bad metadata":   {Status: Declined, Metadata: map[string]any{"f": func() {}}},
-			"reason on ok":   {Status: Charged, Reason: "top_up"},
-			"metadata on ok": {Status: Charged, Metadata: map[string]any{"a": 1}},
 		} {
 			client := newTestClient(t, Options{OnChargeCredits: func(context.Context, Charge, CallContext) (ChargeResult, error) { return result, nil }})
 			expectStatus(t, client.call(t, chargeBody), 500, "internal_error")
@@ -328,6 +326,15 @@ func TestCreditsCharge(t *testing.T) {
 			if len(client.errors) != 1 || !errors.As(client.errors[0], &invalid) {
 				t.Errorf("%s: handler errors %v", name, client.errors)
 			}
+		}
+	})
+	t.Run("ignores reason and metadata on a charge that went through", func(t *testing.T) {
+		client := newTestClient(t, Options{OnChargeCredits: func(context.Context, Charge, CallContext) (ChargeResult, error) {
+			return ChargeResult{Status: Charged, Balance: intPtr(5), Reason: "not a reason", Metadata: map[string]any{"a": 1}}, nil
+		}})
+		rec := client.call(t, chargeBody)
+		if rec.Code != 200 || rec.Body.String() != `{"balance":5}` || len(client.errors) != 0 {
+			t.Errorf("%d %s, errors %v", rec.Code, rec.Body.String(), client.errors)
 		}
 	})
 	t.Run("omits a missing balance", func(t *testing.T) {

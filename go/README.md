@@ -155,8 +155,9 @@ Still give test and live their own endpoint URLs, each with its own client.
   both untouched. `Reason` is 1 to 64 characters of letters, digits and
   `_.:-`; `Metadata` a JSON object of at most 1 KB, which passes through
   Relume's servers and the builder iframe, so never a secret. Either past
-  its limits, or set on a `Charged` result, is answered `500`, so you find
-  out in development.
+  its limits on a decline is answered `500`, so you find out in
+  development. On a `Charged` result both are ignored: the wallet is already
+  debited.
 - When a user builds several pages at once, one `page.unlock` charge covers
   them all: `PageIDs` in place of `PageID`, both prices multiplied by the
   number of pages. Debit it as any other charge. If one page can't be
