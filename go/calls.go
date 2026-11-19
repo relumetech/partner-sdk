@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -98,6 +99,55 @@ type ChargeResult struct {
 	// The balance after the charge, if you know it. Saves Relume a
 	// credits.get call.
 	Balance *int
+	// Declined only: why, passed to the embed's onTopUp untouched so your
+	// page opens the right flow, e.g. "subscription_required". 1 to 64
+	// characters of letters, digits and _.:- ; empty for none.
+	Reason string
+	// Declined only: a JSON object passed to onTopUp untouched, at most 1 KB
+	// serialised; nil for none. It passes through Relume's servers and the
+	// builder iframe, so never a secret: send an id your page can look up.
+	Metadata map[string]any
+}
+
+// DeclineMetadataMaxBytes is the most a decline's Metadata may take as JSON.
+const DeclineMetadataMaxBytes = 1024
+
+var declineReason = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,64}$`)
+
+type declineFields struct {
+	balanceBody
+	Reason   string         `json:"reason,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// declineBody is a 402's { balance?, reason?, metadata? }, checked loudly:
+// Relume drops a field past its limits, and you'd only find out when
+// onTopUp lacked it.
+func declineBody(result ChargeResult) (declineFields, error) {
+	fields := declineFields{balanceBody: balanceBody{Balance: result.Balance}}
+	if result.Status != Declined {
+		if result.Reason != "" || result.Metadata != nil {
+			return fields, &InvalidCallbackResultError{"OnChargeCredits: Reason and Metadata are for a Declined result only."}
+		}
+		return fields, nil
+	}
+	if result.Reason != "" {
+		if !declineReason.MatchString(result.Reason) {
+			return fields, &InvalidCallbackResultError{fmt.Sprintf("OnChargeCredits: Reason must be 1 to 64 characters of letters, digits and _.:-; got %q.", result.Reason)}
+		}
+		fields.Reason = result.Reason
+	}
+	if result.Metadata != nil {
+		encoded, err := json.Marshal(result.Metadata)
+		if err != nil {
+			return fields, &InvalidCallbackResultError{"OnChargeCredits: Metadata must marshal as JSON."}
+		}
+		if len(encoded) > DeclineMetadataMaxBytes {
+			return fields, &InvalidCallbackResultError{fmt.Sprintf("OnChargeCredits: Metadata must be at most %d bytes as JSON; got %d.", DeclineMetadataMaxBytes, len(encoded))}
+		}
+		fields.Metadata = result.Metadata
+	}
+	return fields, nil
 }
 
 // Reversal reasons. New reasons may appear.
@@ -410,14 +460,18 @@ func (c *Client) runCallback(ctx context.Context, call incomingCall, callContext
 		if err := checkOptionalBalance(charged.Balance, "OnChargeCredits"); err != nil {
 			return response{}, err
 		}
+		decline, err := declineBody(charged)
+		if err != nil {
+			return response{}, err
+		}
 		switch charged.Status {
 		case Charged:
 			return jsonResponse(200, balanceBody{Balance: charged.Balance}), nil
 		case Declined:
 			return jsonResponse(402, struct {
-				balanceBody
+				declineFields
 				Error errorBody `json:"error"`
-			}{balanceBody{Balance: charged.Balance}, errorBody{"insufficient_credits", "The user can't afford this action."}}), nil
+			}{decline, errorBody{"insufficient_credits", "The user can't afford this action."}}), nil
 		default:
 			return response{}, &InvalidCallbackResultError{"OnChargeCredits must return a ChargeResult with Status Charged or Declined."}
 		}

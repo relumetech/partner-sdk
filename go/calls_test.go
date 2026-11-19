@@ -291,6 +291,45 @@ func TestCreditsCharge(t *testing.T) {
 			t.Errorf("body %s", rec.Body.String())
 		}
 	})
+	t.Run("answers 402 with the reason and metadata the callback declines with", func(t *testing.T) {
+		client := newTestClient(t, Options{OnChargeCredits: func(context.Context, Charge, CallContext) (ChargeResult, error) {
+			return ChargeResult{Status: Declined, Balance: intPtr(0), Reason: "subscription_required", Metadata: map[string]any{"plan": "pro"}}, nil
+		}})
+		rec := client.call(t, chargeBody)
+		expectStatus(t, rec, 402, "insufficient_credits")
+		body := decode(t, rec)
+		if body["reason"] != "subscription_required" || !reflect.DeepEqual(body["metadata"], map[string]any{"plan": "pro"}) || body["balance"] != float64(0) {
+			t.Errorf("body %s", rec.Body.String())
+		}
+	})
+	t.Run("leaves reason and metadata out of a plain decline", func(t *testing.T) {
+		client := newTestClient(t, Options{OnChargeCredits: func(context.Context, Charge, CallContext) (ChargeResult, error) {
+			return ChargeResult{Status: Declined}, nil
+		}})
+		body := decode(t, client.call(t, chargeBody))
+		for _, field := range []string{"reason", "metadata"} {
+			if _, ok := body[field]; ok {
+				t.Errorf("%s in %v", field, body)
+			}
+		}
+	})
+	t.Run("answers 500 for a reason or metadata past its limits", func(t *testing.T) {
+		for name, result := range map[string]ChargeResult{
+			"long reason":    {Status: Declined, Reason: strings.Repeat("x", 65)},
+			"spaced reason":  {Status: Declined, Reason: "needs payment"},
+			"large metadata": {Status: Declined, Metadata: map[string]any{"blob": strings.Repeat("x", 1100)}},
+			"bad metadata":   {Status: Declined, Metadata: map[string]any{"f": func() {}}},
+			"reason on ok":   {Status: Charged, Reason: "top_up"},
+			"metadata on ok": {Status: Charged, Metadata: map[string]any{"a": 1}},
+		} {
+			client := newTestClient(t, Options{OnChargeCredits: func(context.Context, Charge, CallContext) (ChargeResult, error) { return result, nil }})
+			expectStatus(t, client.call(t, chargeBody), 500, "internal_error")
+			var invalid *InvalidCallbackResultError
+			if len(client.errors) != 1 || !errors.As(client.errors[0], &invalid) {
+				t.Errorf("%s: handler errors %v", name, client.errors)
+			}
+		}
+	})
 	t.Run("omits a missing balance", func(t *testing.T) {
 		client := newTestClient(t, Options{OnChargeCredits: func(context.Context, Charge, CallContext) (ChargeResult, error) {
 			return ChargeResult{Status: Charged}, nil
