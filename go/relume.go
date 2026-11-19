@@ -20,7 +20,7 @@ import (
 )
 
 // Version is sent in the User-Agent of every partner API request.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 const (
 	DefaultAPIBaseURL = "https://apis.relume.io/nova/partner/v1"

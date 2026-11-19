@@ -122,7 +122,8 @@ builder is embedded.
 | Body that isn't valid for its `type`          | `400 invalid_request`                                        |
 | `environment` isn't your secret key's         | `400 environment_mismatch`; your callback isn't called       |
 | `OnGetUser` returns `nil`                     | `404 user_not_found`                                         |
-| `OnChargeCredits` returns `Status: Declined`  | `402 insufficient_credits`, with `balance`                   |
+| `OnChargeCredits` returns `Status: Declined`  | `402 insufficient_credits`, with `balance`, and `reason` and `metadata` when set |
+| A decline's `Reason` or `Metadata` past its limits | `500 internal_error`, and `OnHandlerError` says which |
 | A callback errors, panics or returns bad data | `500 internal_error`, and `OnHandlerError` gets the error    |
 | No `Relume-Embed: 1` header (session route)   | `400 embed_header_missing`, and `OnHandlerError` says why    |
 | `Sec-Fetch-Site: cross-site` (session route)  | `403 cross_site_request`                                     |
@@ -149,6 +150,13 @@ Still give test and live their own endpoint URLs, each with its own client.
 - Return `Status: relume.Declined` when the user can't afford it; the builder
   asks them to top up. `Status` has no valid zero value, so a result that
   forgets it is answered `500` rather than read as either outcome.
+- When a decline isn't about the balance (no subscription, a payment to
+  confirm), say why with `Reason` and `Metadata`: the embed's `onTopUp` gets
+  both untouched. `Reason` is 1 to 64 characters of letters, digits and
+  `_.:-`; `Metadata` a JSON object of at most 1 KB, which passes through
+  Relume's servers and the builder iframe, so never a secret. Either past
+  its limits, or set on a `Charged` result, is answered `500`, so you find
+  out in development.
 - When a user builds several pages at once, one `page.unlock` charge covers
   them all: `PageIDs` in place of `PageID`, both prices multiplied by the
   number of pages. Debit it as any other charge. If one page can't be

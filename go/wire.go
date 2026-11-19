@@ -165,6 +165,9 @@ type PartnerResponse struct {
 	// nil after a timeout or network error.
 	Body *struct {
 		Balance *int `json:"balance"`
+		// A declined charge's reason, as your 402 sent it; its metadata
+		// isn't kept. Empty when there was none.
+		Reason string `json:"reason"`
 	} `json:"body"`
 	Attempts int `json:"attempts"`
 }
