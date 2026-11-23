@@ -75,6 +75,8 @@ type wirePage[T any] struct {
 
 func validUser(u *User) bool { return u.UserID != "" && u.Status != "" }
 
+func validSite(s *Site) bool { return s.SiteID != "" && s.UserID != "" }
+
 // CreateSession is POST /sessions: a single-use client secret for this
 // user's embed. The first call for a userID creates their Relume account
 // with user.get. The session route (SessionHandler) calls it for you.
@@ -149,11 +151,37 @@ func (c *Client) GetSite(ctx context.Context, siteID string) (*Site, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getJSON(ctx, c, "/sites/"+id, func(s *Site) bool { return s.SiteID != "" && s.UserID != "" })
+	return getJSON(ctx, c, "/sites/"+id, validSite)
 }
 
-// GetExport is GET /sites/{siteId}/exports/{exportId}. Not available yet:
-// answers CodeNotImplemented (501) until exports ship.
+// UpdateSite is PATCH /sites/{siteId}: renames the site and returns it.
+// CodeUserSuspended for a suspended user's site.
+func (c *Client) UpdateSite(ctx context.Context, siteID string, params UpdateSiteParams) (*Site, error) {
+	id, err := segment("siteID", siteID)
+	if err != nil {
+		return nil, err
+	}
+	return requestJSON(ctx, c, requestSpec{method: http.MethodPatch, path: "/sites/" + id, body: map[string]string{"name": params.Name}, retry: retrySafe},
+		validSite)
+}
+
+// DeleteSite is DELETE /sites/{siteId}, as deleting it in the builder: a
+// site published on its preview URL is taken offline too, so check
+// Publish.Status first. Refused with CodeSiteHasCustomDomain while a custom
+// domain is attached, else CodeSiteHasHostingPlan while its hosting plan is
+// active or past due, and CodeUserSuspended for a suspended user's site. A
+// repeat answers CodeSiteNotFound, so a 5xx isn't retried.
+func (c *Client) DeleteSite(ctx context.Context, siteID string) (*DeletedSite, error) {
+	id, err := segment("siteID", siteID)
+	if err != nil {
+		return nil, err
+	}
+	return requestJSON(ctx, c, requestSpec{method: http.MethodDelete, path: "/sites/" + id, retry: retryUnsafe},
+		func(d *DeletedSite) bool { return d.SiteID != "" })
+}
+
+// GetExport is GET /sites/{siteId}/exports/{exportId}: an export the user
+// made in the builder. Each fetch of a ready export signs a new DownloadURL.
 func (c *Client) GetExport(ctx context.Context, siteID, exportID string) (*Export, error) {
 	site, err := segment("siteID", siteID)
 	if err != nil {

@@ -1,5 +1,5 @@
 {
-  "description": "Which user.get emails Relume accepts (protocol section 5). Relume validates with Zod 4's z.email(); @relume_io/partner-node mirrors its pattern. Both test suites assert every entry, so the two can't drift.",
+  "description": "Which user.get emails Relume accepts. Relume validates with Zod 4's z.email(), and @relume_io/partner-node checks the same pattern.",
   "valid": [
     "ada@example.com",
     "o'neil+relume@mail.example.co",

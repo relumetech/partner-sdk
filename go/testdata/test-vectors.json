@@ -1,6 +1,6 @@
 {
-  "$comment": "Generated from backend/src/services/partners/signing.ts by `npm run partner-protocol:test-vectors`. Do not edit by hand.",
-  "spec": "docs/partner-protocol/v1.md",
+  "$comment": "Relume-Signature test vectors: signing must reproduce sign.header, and verifying must return verify.expected. Do not edit by hand.",
+  "spec": "https://apis.relume.io/nova/docs/partners",
   "scheme": "v1",
   "header": "Relume-Signature",
   "toleranceSeconds": 300,
