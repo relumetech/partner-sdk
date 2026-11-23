@@ -26,9 +26,6 @@ const (
 	CodeRateLimited          = "rate_limited"
 	CodeInternalError        = "internal_error"
 	CodePartnerEndpointError = "partner_endpoint_error"
-
-	// Deprecated: no endpoint answers it.
-	CodeNotImplemented = "not_implemented"
 )
 
 // Page is one page of a list endpoint.
