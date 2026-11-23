@@ -13,7 +13,8 @@ var ctx = context.Background()
 
 const (
 	userReply   = `{"userId":"42","status":"active","createdAt":"2026-10-27T00:00:00.000Z","lastActiveAt":null,"siteCount":3}`
-	siteReply   = `{"siteId":"site_1","userId":"42","name":"Bloom","createdAt":"2026-10-27T00:00:00.000Z","updatedAt":"2026-10-27T01:30:00.000Z","thumbnailUrl":null,"lastExport":null}`
+	siteReply   = `{"siteId":"site_1","userId":"42","name":"Bloom","createdAt":"2026-10-27T00:00:00.000Z","updatedAt":"2026-10-27T01:30:00.000Z","thumbnailUrl":null,"lastExport":null,"publish":null}`
+	exportReply = `{"exportId":"exp_1","siteId":"site_1","status":"ready","downloadUrl":"https://x/y.zip","createdAt":"2026-10-27T01:30:00.000Z","expiresAt":"2026-10-27T01:40:00.000Z"}`
 	ledgerEntry = `{"id":"ch_%d","type":"charge","status":"charged","userId":"42","partnerCredits":80000,"relumeCredits":8,"action":"page.unlock","siteId":"site_1","pageId":null,"chargeId":null,"reason":null,"createdAt":"2026-10-27T01:30:00.000Z","resolvedAt":"2026-10-27T01:30:01.000Z"}`
 )
 
@@ -67,7 +68,7 @@ func TestEndpoints(t *testing.T) {
 			t.Fatal(err)
 		}
 		site, err := client.GetSite(ctx, "site_1")
-		if err != nil || site.Name != "Bloom" || site.ThumbnailURL != nil || site.UpdatedAt.Minute() != 30 {
+		if err != nil || site.Name != "Bloom" || site.ThumbnailURL != nil || site.UpdatedAt.Minute() != 30 || site.LastExport != nil || site.Publish != nil {
 			t.Fatalf("%+v %v", site, err)
 		}
 		sites, err := client.ListSites(ctx, "42", PageQuery{Limit: 10}).Collect()
@@ -82,14 +83,89 @@ func TestEndpoints(t *testing.T) {
 			t.Errorf("list %s?%s", got[3].path, got[3].query)
 		}
 	})
+	t.Run("GetSite reads publish and lastExport", func(t *testing.T) {
+		published := strings.Replace(siteReply, `"lastExport":null,"publish":null`,
+			`"lastExport":`+exportReply+`,"publish":{"status":"published","url":"https://bloom.example.com","publishedAt":"2026-10-27T01:30:00.000Z","hostingStatus":"active"}`, 1)
+		unpublished := strings.Replace(siteReply, `"publish":null`,
+			`"publish":{"status":"unpublished","url":null,"publishedAt":"2026-10-27T01:30:00.000Z","hostingStatus":"past_due"}`, 1)
+		api := newFakeAPI(t, reply(200, published), reply(200, unpublished))
+		client := newAPIClient(t, api, Options{})
+		site, err := client.GetSite(ctx, "site_1")
+		if err != nil || site.Publish == nil || site.LastExport == nil {
+			t.Fatalf("%+v %v", site, err)
+		}
+		if p := site.Publish; p.Status != SitePublished || *p.URL != "https://bloom.example.com" || p.PublishedAt.Minute() != 30 || p.HostingStatus != HostingActive {
+			t.Errorf("publish %+v", p)
+		}
+		if e := site.LastExport; e.ExportID != "exp_1" || e.Status != ExportReady || *e.DownloadURL != "https://x/y.zip" || e.ExpiresAt.Minute() != 40 {
+			t.Errorf("lastExport %+v", e)
+		}
+		site, err = client.GetSite(ctx, "site_1")
+		if err != nil || site.Publish.Status != SiteUnpublished || site.Publish.URL != nil || site.Publish.HostingStatus != HostingPastDue {
+			t.Fatalf("%+v %v", site.Publish, err)
+		}
+	})
+	t.Run("UpdateSite: PATCH /sites/{siteId} with the name", func(t *testing.T) {
+		api := newFakeAPI(t, reply(200, strings.Replace(siteReply, "site_1", "site_2", 1)))
+		client := newAPIClient(t, api, Options{})
+		site, err := client.UpdateSite(ctx, "site_2", UpdateSiteParams{Name: "Bloom"})
+		if err != nil || site.SiteID != "site_2" || site.Name != "Bloom" || site.Publish != nil {
+			t.Fatalf("%+v %v", site, err)
+		}
+		got := api.got()[0]
+		if got.method != http.MethodPatch || got.path != "/sites/site_2" || got.body != `{"name":"Bloom"}` || got.header.Get("Content-Type") != "application/json" {
+			t.Errorf("%s %s %q", got.method, got.path, got.body)
+		}
+	})
+	t.Run("DeleteSite: DELETE /sites/{siteId}, refused with a custom domain or a hosting plan", func(t *testing.T) {
+		api := newFakeAPI(t,
+			reply(200, `{"siteId":"site_2","deleted":true}`),
+			apiError(404, "site_not_found"),
+			apiError(409, "site_has_custom_domain"),
+			apiError(409, "site_has_hosting_plan"),
+		)
+		client := newAPIClient(t, api, Options{})
+		deleted, err := client.DeleteSite(ctx, "site_2")
+		if err != nil || *deleted != (DeletedSite{SiteID: "site_2", Deleted: true}) {
+			t.Fatalf("%+v %v", deleted, err)
+		}
+		for _, want := range []struct {
+			site   string
+			status int
+			code   string
+		}{
+			{"site_2", 404, CodeSiteNotFound},
+			{"site_1", 409, CodeSiteHasCustomDomain},
+			{"site_3", 409, CodeSiteHasHostingPlan},
+		} {
+			_, err := client.DeleteSite(ctx, want.site)
+			var apiErr *Error
+			if !errors.As(err, &apiErr) || apiErr.Status != want.status || apiErr.Code != want.code {
+				t.Errorf("%s: got %v", want.site, err)
+			}
+		}
+		for i, got := range api.got() {
+			if got.method != http.MethodDelete || got.body != "" || got.header.Get("Content-Type") != "" {
+				t.Errorf("request %d: %s %s %q", i, got.method, got.path, got.body)
+			}
+		}
+		if got := api.got(); got[0].path != "/sites/site_2" || got[2].path != "/sites/site_1" {
+			t.Errorf("paths %s %s", got[0].path, got[2].path)
+		}
+	})
 	t.Run("GetExport", func(t *testing.T) {
-		api := newFakeAPI(t, reply(200, `{"exportId":"exp_1","siteId":"site_1","status":"ready","downloadUrl":"https://x/y.zip","createdAt":"2026-10-27T01:30:00.000Z","expiresAt":"2026-10-28T01:30:00.000Z"}`), apiError(501, "not_implemented"))
+		expired := `{"exportId":"exp_0","siteId":"site_1","status":"expired","downloadUrl":null,"createdAt":"2026-10-26T01:30:00.000Z","expiresAt":null}`
+		api := newFakeAPI(t, reply(200, exportReply), reply(200, expired), apiError(404, "export_not_found"))
 		client := newAPIClient(t, api, Options{})
 		export, err := client.GetExport(ctx, "site_1", "exp_1")
-		if err != nil || export.Status != ExportReady || *export.DownloadURL != "https://x/y.zip" || api.got()[0].path != "/sites/site_1/exports/exp_1" {
+		if err != nil || export.Status != ExportReady || *export.DownloadURL != "https://x/y.zip" || export.ExpiresAt == nil || api.got()[0].path != "/sites/site_1/exports/exp_1" {
 			t.Fatalf("%+v %v", export, err)
 		}
-		if _, err := client.GetExport(ctx, "site_1", "exp_1"); apiCode(err) != CodeNotImplemented {
+		export, err = client.GetExport(ctx, "site_1", "exp_0")
+		if err != nil || export.Status != ExportExpired || export.DownloadURL != nil || export.ExpiresAt != nil {
+			t.Fatalf("%+v %v", export, err)
+		}
+		if _, err := client.GetExport(ctx, "site_1", "exp_2"); apiCode(err) != CodeExportNotFound {
 			t.Errorf("got %v", err)
 		}
 	})
@@ -119,12 +195,15 @@ func TestEndpoints(t *testing.T) {
 			t.Errorf("queries %q %q", got[0].query, got[1].query)
 		}
 	})
-	t.Run("GetPrices returns the prices and what credits are called", func(t *testing.T) {
-		api := newFakeAPI(t, reply(200, `{"data":[{"action":"chat.message","partnerCredits":null,"relumeCredits":1}],"creditUnit":{"singular":"coin","plural":"coins","iconUrl":"https://example.com/coin.svg"}}`))
+	t.Run("GetPrices returns the prices, the default credit rate and what credits are called", func(t *testing.T) {
+		api := newFakeAPI(t, reply(200, `{"data":[{"action":"chat.message","partnerCredits":10000,"relumeCredits":1,"creditRate":10000},{"action":"site.export","partnerCredits":null,"relumeCredits":0,"creditRate":null}],"creditRate":3000,"creditUnit":{"singular":"coin","plural":"coins","iconUrl":"https://example.com/coin.svg"}}`))
 		client := newAPIClient(t, api, Options{})
 		list, err := client.GetPrices(ctx)
-		if err != nil || len(list.Data) != 1 || list.CreditUnit != (CreditUnit{Singular: "coin", Plural: "coins", IconURL: "https://example.com/coin.svg"}) {
+		if err != nil || len(list.Data) != 2 || *list.CreditRate != 3000 || list.CreditUnit != (CreditUnit{Singular: "coin", Plural: "coins", IconURL: "https://example.com/coin.svg"}) {
 			t.Fatalf("%+v %v", list, err)
+		}
+		if rated, unrated := list.Data[0], list.Data[1]; *rated.CreditRate != 10000 || *rated.PartnerCredits != 10000 || unrated.CreditRate != nil || unrated.PartnerCredits != nil {
+			t.Errorf("%+v", list.Data)
 		}
 	})
 	t.Run("answers unexpected_response for prices without what credits are called", func(t *testing.T) {
@@ -137,10 +216,10 @@ func TestEndpoints(t *testing.T) {
 		}
 	})
 	t.Run("ListPrices returns the prices", func(t *testing.T) {
-		api := newFakeAPI(t, reply(200, `{"data":[{"action":"chat.message","partnerCredits":null,"relumeCredits":1}],"creditUnit":{"singular":"credit","plural":"credits"}}`))
+		api := newFakeAPI(t, reply(200, `{"data":[{"action":"chat.message","partnerCredits":null,"relumeCredits":1,"creditRate":null}],"creditRate":null,"creditUnit":{"singular":"credit","plural":"credits"}}`))
 		client := newAPIClient(t, api, Options{})
 		prices, err := client.ListPrices(ctx)
-		if err != nil || len(prices) != 1 || prices[0].PartnerCredits != nil || prices[0].RelumeCredits != 1 {
+		if err != nil || len(prices) != 1 || prices[0].PartnerCredits != nil || prices[0].RelumeCredits != 1 || prices[0].CreditRate != nil {
 			t.Fatalf("%+v %v", prices, err)
 		}
 	})
@@ -163,6 +242,12 @@ func TestEndpoints(t *testing.T) {
 			}
 			if _, err := client.DeactivateUser(ctx, id); err == nil {
 				t.Errorf("DeactivateUser(%q) didn't refuse", id)
+			}
+			if _, err := client.UpdateSite(ctx, id, UpdateSiteParams{Name: "Bloom"}); err == nil {
+				t.Errorf("UpdateSite(%q) didn't refuse", id)
+			}
+			if _, err := client.DeleteSite(ctx, id); err == nil {
+				t.Errorf("DeleteSite(%q) didn't refuse", id)
 			}
 			if _, err := client.GetExport(ctx, "site_1", id); err == nil {
 				t.Errorf("GetExport(%q) didn't refuse", id)
@@ -385,7 +470,24 @@ func TestRetries(t *testing.T) {
 			t.Errorf("%v after %d requests", err, len(api.got()))
 		}
 	})
-	t.Run("retries a failed connection, except on CreateSite", func(t *testing.T) {
+	t.Run("DeleteSite retries a 429 but not a 5xx", func(t *testing.T) {
+		api := newFakeAPI(t, reply(429, `{}`, "Retry-After", "2"), reply(200, `{"siteId":"site_2","deleted":true}`), reply(503, `{}`))
+		client := newAPIClient(t, api, Options{})
+		if _, err := client.DeleteSite(ctx, "site_2"); err != nil || len(client.sleeps) != 1 || client.sleeps[0] != 2*time.Second {
+			t.Fatalf("%v, sleeps %v", err, client.sleeps)
+		}
+		if _, err := client.DeleteSite(ctx, "site_3"); err == nil || len(api.got()) != 3 {
+			t.Errorf("%v after %d requests", err, len(api.got()))
+		}
+	})
+	t.Run("UpdateSite retries a 5xx", func(t *testing.T) {
+		api := newFakeAPI(t, reply(503, `{}`), reply(200, siteReply))
+		client := newAPIClient(t, api, Options{})
+		if _, err := client.UpdateSite(ctx, "site_1", UpdateSiteParams{Name: "Bloom"}); err != nil || len(api.got()) != 2 || api.got()[1].body != `{"name":"Bloom"}` {
+			t.Errorf("%v after %d requests", err, len(api.got()))
+		}
+	})
+	t.Run("retries a failed connection, except on CreateSite and DeleteSite", func(t *testing.T) {
 		api := newFakeAPI(t)
 		api.Close()
 		client := newAPIClient(t, api, Options{})
@@ -395,6 +497,9 @@ func TestRetries(t *testing.T) {
 		client.sleeps = nil
 		if _, err := client.CreateSite(ctx, "42", CreateSiteParams{}); apiCode(err) != CodeNetworkError || len(client.sleeps) != 0 {
 			t.Errorf("CreateSite: %v, sleeps %v", err, client.sleeps)
+		}
+		if _, err := client.DeleteSite(ctx, "site_1"); apiCode(err) != CodeNetworkError || len(client.sleeps) != 0 {
+			t.Errorf("DeleteSite: %v, sleeps %v", err, client.sleeps)
 		}
 	})
 	t.Run("treats a redirect as a network error, without following or retrying it", func(t *testing.T) {

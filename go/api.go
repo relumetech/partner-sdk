@@ -164,8 +164,8 @@ func errorFromResponse(res *apiResponse) *Error {
 }
 
 // retryPolicy: every request retries a 429, which is refused before any
-// work. Unsafe requests (not idempotent, with a lasting effect, like
-// creating a site) retry nothing else: a 5xx or a timeout may mean the work
+// work. Unsafe requests (a retry wouldn't do the same, like creating a site
+// or deleting one) retry nothing else: a 5xx or a timeout may mean the work
 // was done.
 type retryPolicy int
 

@@ -20,7 +20,7 @@ import (
 )
 
 // Version is sent in the User-Agent of every partner API request.
-const Version = "0.2.1"
+const Version = "0.3.0"
 
 const (
 	DefaultAPIBaseURL = "https://apis.relume.io/nova/partner/v1"
@@ -70,7 +70,8 @@ type Options struct {
 	APITimeout time.Duration
 	// MaxRetries is the retries after the first attempt. Default 2. A 429 is
 	// retried after its Retry-After; a 5xx or a failed connection with
-	// backoff, except on CreateSite, which isn't idempotent.
+	// backoff, except on CreateSite, which isn't idempotent, and DeleteSite,
+	// whose repeat answers CodeSiteNotFound.
 	MaxRetries int
 	// DisableRetries makes every request a single attempt.
 	DisableRetries bool

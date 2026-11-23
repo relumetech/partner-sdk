@@ -86,6 +86,30 @@ func ExampleClient_ListLedger() {
 	stored = list.NextCursor() // save it for next time
 }
 
+func ExampleClient_DeleteSite() {
+	client, _ := relume.New(relume.Options{SecretKey: os.Getenv("RELUME_SECRET_KEY")})
+	ctx := context.Background()
+
+	site, err := client.GetSite(ctx, "019a3c4e-7b2d-7f10-9c3a-5e2f8d1b6a40")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if site.Publish != nil && site.Publish.Status == relume.SitePublished {
+		log.Println("deleting takes it offline:", *site.Publish.URL)
+	}
+
+	_, err = client.DeleteSite(ctx, site.SiteID)
+	var apiErr *relume.Error
+	switch {
+	case errors.As(err, &apiErr) && apiErr.Code == relume.CodeSiteHasCustomDomain:
+		log.Println("remove the custom domain in the builder first")
+	case errors.As(err, &apiErr) && apiErr.Code == relume.CodeSiteHasHostingPlan:
+		log.Println("cancel the hosting plan first")
+	case err != nil:
+		log.Fatal(err)
+	}
+}
+
 func ExampleError() {
 	client, _ := relume.New(relume.Options{SecretKey: os.Getenv("RELUME_SECRET_KEY")})
 
