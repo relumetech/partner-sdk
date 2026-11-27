@@ -141,6 +141,10 @@ Each callback gets the request's `context.Context` and a `CallContext`
 refused before a callback runs, so a test call can never move a live wallet.
 Still give test and live their own endpoint URLs, each with its own client.
 
+Relume waits 6 seconds for `user.get`, `credits.get` and each
+`credits.charge` attempt, and 10 seconds for `credits.reverse`; a slower
+answer counts as a timeout.
+
 **`OnChargeCredits`**
 
 - **Debit `PartnerCredits` only.** `RelumeCredits` is what Relume charges you
@@ -217,7 +221,7 @@ if errors.As(err, &apiErr) && apiErr.Code == relume.CodeUserNotFound {
 | `GetPrices(ctx)`                  | `GET /prices`, in full                   |
 
 ```go
-site, err := client.GetSite(ctx, siteID) // Name, Publish, LastExport, …
+site, err := client.GetSite(ctx, siteID) // Name, Publish, LastExport, IsEmpty, …
 site, err = client.UpdateSite(ctx, siteID, relume.UpdateSiteParams{Name: "Bloom"})
 deleted, err := client.DeleteSite(ctx, siteID) // {SiteID, Deleted: true}
 export, err := client.GetExport(ctx, siteID, exportID) // from the embed's onExport, or site.LastExport
@@ -243,6 +247,9 @@ export, err := client.GetExport(ctx, siteID, exportID) // from the embed's onExp
   past due answers `CodeSiteHasHostingPlan` (the plan must be canceled
   first). A suspended user's sites can't be renamed or deleted
   (`CodeUserSuspended`).
+- `site.IsEmpty` is true until someone starts the site's intake (types a
+  description or attaches a file), unlocks a page or starts a chat in it. You
+  can use it to filter sites out of your list if you want to.
 - `site.LastExport` is the most recent export the user made in the builder.
   Once it's `ExportReady`, its `DownloadURL` works for 10 minutes;
   `GetExport` signs a new one. An export is `ExportExpired` once a newer one
@@ -277,7 +284,7 @@ followed.
 relume.New(relume.Options{
 	SecretKey:      "sk_test_…",       // required; sk_test_… or sk_live_…
 	APIBaseURL:     "https://…",       // default production; http only for localhost
-	APITimeout:     15 * time.Second,  // per attempt
+	APITimeout:     20 * time.Second,  // per attempt
 	MaxRetries:     2,                 // retries after the first attempt; default 2
 	DisableRetries: false,             // true for a single attempt per request
 	HTTPClient:     proxiedClient,     // default http.DefaultClient

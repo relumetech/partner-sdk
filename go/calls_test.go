@@ -49,6 +49,22 @@ func TestNew(t *testing.T) {
 			}
 		}
 	})
+	t.Run("gives each API request attempt 20 seconds unless APITimeout says otherwise", func(t *testing.T) {
+		client, err := New(Options{SecretKey: testSecret})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if client.timeout != 20*time.Second {
+			t.Errorf("default timeout %s", client.timeout)
+		}
+		client, err = New(Options{SecretKey: testSecret, APITimeout: 5 * time.Second})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if client.timeout != 5*time.Second {
+			t.Errorf("timeout %s", client.timeout)
+		}
+	})
 	t.Run("refuses a negative MaxRetries or APITimeout, and MaxRetries with DisableRetries", func(t *testing.T) {
 		for _, options := range []Options{
 			{MaxRetries: -1},

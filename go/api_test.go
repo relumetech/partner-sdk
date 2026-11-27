@@ -13,7 +13,7 @@ var ctx = context.Background()
 
 const (
 	userReply   = `{"userId":"42","status":"active","createdAt":"2026-10-27T00:00:00.000Z","lastActiveAt":null,"siteCount":3}`
-	siteReply   = `{"siteId":"site_1","userId":"42","name":"Bloom","createdAt":"2026-10-27T00:00:00.000Z","updatedAt":"2026-10-27T01:30:00.000Z","thumbnailUrl":null,"lastExport":null,"publish":null}`
+	siteReply   = `{"siteId":"site_1","userId":"42","name":"Bloom","createdAt":"2026-10-27T00:00:00.000Z","updatedAt":"2026-10-27T01:30:00.000Z","thumbnailUrl":null,"lastExport":null,"publish":null,"isEmpty":true}`
 	exportReply = `{"exportId":"exp_1","siteId":"site_1","status":"ready","downloadUrl":"https://x/y.zip","createdAt":"2026-10-27T01:30:00.000Z","expiresAt":"2026-10-27T01:40:00.000Z"}`
 	ledgerEntry = `{"id":"ch_%d","type":"charge","status":"charged","userId":"42","partnerCredits":80000,"relumeCredits":8,"action":"page.unlock","siteId":"site_1","pageId":null,"chargeId":null,"reason":null,"createdAt":"2026-10-27T01:30:00.000Z","resolvedAt":"2026-10-27T01:30:01.000Z"}`
 )
@@ -68,11 +68,11 @@ func TestEndpoints(t *testing.T) {
 			t.Fatal(err)
 		}
 		site, err := client.GetSite(ctx, "site_1")
-		if err != nil || site.Name != "Bloom" || site.ThumbnailURL != nil || site.UpdatedAt.Minute() != 30 || site.LastExport != nil || site.Publish != nil {
+		if err != nil || site.Name != "Bloom" || site.ThumbnailURL != nil || site.UpdatedAt.Minute() != 30 || site.LastExport != nil || site.Publish != nil || !site.IsEmpty {
 			t.Fatalf("%+v %v", site, err)
 		}
 		sites, err := client.ListSites(ctx, "42", PageQuery{Limit: 10}).Collect()
-		if err != nil || len(sites) != 1 {
+		if err != nil || len(sites) != 1 || !sites[0].IsEmpty {
 			t.Fatalf("%+v %v", sites, err)
 		}
 		got := api.got()
@@ -83,15 +83,15 @@ func TestEndpoints(t *testing.T) {
 			t.Errorf("list %s?%s", got[3].path, got[3].query)
 		}
 	})
-	t.Run("GetSite reads publish and lastExport", func(t *testing.T) {
-		published := strings.Replace(siteReply, `"lastExport":null,"publish":null`,
-			`"lastExport":`+exportReply+`,"publish":{"status":"published","url":"https://bloom.example.com","publishedAt":"2026-10-27T01:30:00.000Z","hostingStatus":"active"}`, 1)
+	t.Run("GetSite reads publish, lastExport and isEmpty", func(t *testing.T) {
+		published := strings.Replace(siteReply, `"lastExport":null,"publish":null,"isEmpty":true`,
+			`"lastExport":`+exportReply+`,"publish":{"status":"published","url":"https://bloom.example.com","publishedAt":"2026-10-27T01:30:00.000Z","hostingStatus":"active"},"isEmpty":false`, 1)
 		unpublished := strings.Replace(siteReply, `"publish":null`,
 			`"publish":{"status":"unpublished","url":null,"publishedAt":"2026-10-27T01:30:00.000Z","hostingStatus":"past_due"}`, 1)
 		api := newFakeAPI(t, reply(200, published), reply(200, unpublished))
 		client := newAPIClient(t, api, Options{})
 		site, err := client.GetSite(ctx, "site_1")
-		if err != nil || site.Publish == nil || site.LastExport == nil {
+		if err != nil || site.Publish == nil || site.LastExport == nil || site.IsEmpty {
 			t.Fatalf("%+v %v", site, err)
 		}
 		if p := site.Publish; p.Status != SitePublished || *p.URL != "https://bloom.example.com" || p.PublishedAt.Minute() != 30 || p.HostingStatus != HostingActive {
