@@ -4,8 +4,8 @@ package relume
 //
 //	Relume-Signature: t=<unix seconds>,v1=<hex hmac-sha256(sk, t + "." + rawBody)>[,v1=…]
 //
-// Mirrors Relume's backend signer (services/partners/signing.ts) and passes
-// the protocol's test vectors (testdata/). Never log a secret or a signature.
+// Mirrors Relume's signer and passes the protocol's test vectors
+// (testdata/). Never log a secret or a signature.
 
 import (
 	"crypto/hmac"

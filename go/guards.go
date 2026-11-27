@@ -54,8 +54,8 @@ func isBalance(balance int) bool {
 	return balance >= 0 && int64(balance) <= maxSafeInteger
 }
 
-// Zod 4's default email pattern, which Relume validates user.get with
-// (Relume backend: services/partners/partner-calls.ts). Change both together.
+// Zod 4's default email pattern, the one Relume validates user.get's email
+// with, so both sides accept the same addresses.
 var emailPattern = regexp.MustCompile(`^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$`)
 
 func isEmail(value string) bool {
