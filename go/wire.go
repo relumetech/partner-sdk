@@ -152,6 +152,10 @@ type Site struct {
 	LastExport *Export `json:"lastExport"`
 	// nil until the site is first published.
 	Publish *SitePublish `json:"publish"`
+	// True until someone starts the site's intake (types a description or
+	// attaches a file), unlocks a page or starts a chat in it. You can use it
+	// to filter sites out of a list.
+	IsEmpty bool `json:"isEmpty"`
 }
 
 type CreateSiteParams struct {

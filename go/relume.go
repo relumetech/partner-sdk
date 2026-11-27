@@ -20,13 +20,14 @@ import (
 )
 
 // Version is sent in the User-Agent of every partner API request.
-const Version = "0.3.0"
+const Version = "0.4.0"
 
 const (
 	DefaultAPIBaseURL = "https://apis.relume.io/nova/partner/v1"
-	// DefaultAPITimeout is per attempt. POST /sessions waits on user.get for
-	// a new user (4s), so it allows more.
-	DefaultAPITimeout = 15 * time.Second
+	// DefaultAPITimeout is per attempt. POST /sessions for a new user waits
+	// on user.get (6s) and then on creating their account, about 16s at
+	// worst, so it allows more.
+	DefaultAPITimeout = 20 * time.Second
 	// DefaultMaxRetries is the retries after the first attempt.
 	DefaultMaxRetries = 2
 
@@ -66,7 +67,7 @@ type Options struct {
 	// APIBaseURL defaults to production. Must be https, since every request
 	// carries the secret key; http is allowed only for localhost.
 	APIBaseURL string
-	// APITimeout is per partner API request attempt. Default 15 seconds.
+	// APITimeout is per partner API request attempt. Default 20 seconds.
 	APITimeout time.Duration
 	// MaxRetries is the retries after the first attempt. Default 2. A 429 is
 	// retried after its Retry-After; a 5xx or a failed connection with
